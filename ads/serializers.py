@@ -54,16 +54,26 @@ class UserCreateSerializer(serializers.ModelSerializer):
         self.initial_data = qd
         valid_result = super().is_valid(raise_exception=raise_exception)
         qd.update({'location': self._locations})
+        self.initial_data = qd
         return valid_result
 
 
     def create(self, validated_data):
-        validated_data.pop('location')
-        user = Users.objects.create(**validated_data)
+        user = Users(
+            id = validated_data['id'],
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name'],
+            username=validated_data['username'],
+            password=validated_data['password'],
+            role=validated_data['role'],
+            age=validated_data['age']
+        )
 
+        user.save()
         for location in self._locations:
-            user_loc, _ = Locations.objects.get_or_create(name=location)
-            user.location.add(user_loc)
+            user_loc, _ = Locations.objects.filter(name=location)
+            user_loc.save()
+        user.location.add(user_loc)
         user.save()
         return user
 
