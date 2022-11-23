@@ -35,7 +35,6 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=False)
     location = serializers.SlugRelatedField(
         required=False,
         many=True,
@@ -45,7 +44,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Users
-        fields = '__all__'
+        exclude = ['id']
 
 
     def is_valid(self, *, raise_exception=False):
@@ -60,7 +59,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = Users(
-            id = validated_data['id'],
             first_name=validated_data['first_name'],
             last_name=validated_data['last_name'],
             username=validated_data['username'],
@@ -71,7 +69,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
         user.save()
         for location in self._locations:
-            user_loc, _ = Locations.objects.filter(name=location)
+            user_loc, _ = Locations.objects.filter(name=location).get_or_create()
             user_loc.save()
         user.location.add(user_loc)
         user.save()
