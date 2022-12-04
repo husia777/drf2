@@ -15,13 +15,14 @@ URL для создания пользователя
 http://127.0.0.1:8000/user/create/
 
 {
-    "first_name":"sdsdfsdf",
-    "location":["casasd", "sgsdgsdg"],
-    "last_name": "dfgdfgfg",
-    "username": "dfgdgfgf",
-    "password": "dfgdf",
-    "role": "moderator",
-    "age": 24
+"first_name":"Новый пользователь3",
+"last_name":"1",
+"username":"3",
+"password":"3",
+"location":["1", "2", "3"],
+"role":"user",
+"age":"22"
+}
 }<h4> проверка обновления и создания юзера</h4>
 
 
@@ -38,3 +39,33 @@ http://127.0.0.1:8000/location/
 <h3>шаг 4</h3> 
 
 http://127.0.0.1:8000/ad?price_from=100&price_to=100 
+<h3>шаг 5 </h3>
+Чтобы получить JWT токен для пользователя введите POST запрос и отправьте JSON данные
+http://127.0.0.1:8000/token/
+{
+"username":"husia777",
+"password":"sasa222"
+}
+Для refresh http://127.0.0.1:8000/token/refresh/
+
+для обычного токена
+http://127.0.0.1:8000/login/
+{   
+"username":"husia777",
+"password":"sasa222"
+}
+для выхода
+http://127.0.0.1:8000/logout/
+и в Authorization ввести Token <имя токена>
+
+чтобы получить данные о каком то именно товаре
+http://127.0.0.1:8000/ad/1/
+и в Authorization ввести Bearer <имя токена>
+
+для создания подборки 
+http://127.0.0.1:8000/compilation/create/
+{
+    "name":"обновленная подборка",
+    "owner":"19",
+    "items":[1,2,3]
+}

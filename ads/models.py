@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import AbstractUser
 
 
 class Locations(models.Model):
@@ -25,14 +26,15 @@ class Category(models.Model):
         return self.name
 
 
-class Users(models.Model):
-    first_name = models.CharField(max_length=255)
-    last_name = models.TextField(null=True)
-    username = models.TextField()
-    password = models.TextField()
-    role = models.TextField()
+class Users(AbstractUser):
+    ADMIN = "admin"
+    M0DERATOR = "moderator"
+    USER = "user"
+    ROLE = [(M0DERATOR, "moderator"), (ADMIN, "admin"), (USER, "user")]
+    role = models.CharField(max_length=9, choices=ROLE, default=USER)
     age = models.IntegerField()
-    location = models.ManyToManyField(Locations)
+    location = models.ManyToManyField('Locations')
+    last_name = models.CharField(max_length=100, blank=True)
 
     class Meta:
         verbose_name = 'Пользователь'
@@ -58,3 +60,13 @@ class Ads(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Compilation(models.Model):
+    name = models.CharField(max_length=100)
+    items = models.ManyToManyField('Ads')
+    owner = models.ForeignKey('Users', on_delete=models.PROTECT)
+
+    class Meta:
+        verbose_name = 'Подборка'
+        verbose_name_plural = 'Подборки'

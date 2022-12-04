@@ -36,6 +36,7 @@ class Command(BaseCommand):
                         role=i['role'],
                         age=i['age'],
                         )
+                    user.set_password(i["password"])
                     user.save()
 
             with open('ads/categories.csv', 'r', encoding='utf-8') as file:

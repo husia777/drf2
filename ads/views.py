@@ -1,18 +1,31 @@
-from django.db.models import Count, Q
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.generic import DetailView, ListView, CreateView, UpdateView, DeleteView
+from rest_framework import status
 from rest_framework.generics import CreateAPIView, ListAPIView, RetrieveAPIView, DestroyAPIView, UpdateAPIView
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from ads.models import Ads, Category, Users, Locations
+from ads.models import Ads, Category, Users, Locations, Compilation
 from django.views.decorators.csrf import csrf_exempt
 import json
 
+from ads.permissions import PermissionsForCompilation, PermissionsForAds
 from ads.serializers import UserCreateSerializer, LocationSerializer, UserListSerializer, UserDetailSerializer, \
-    UserUpdateSerializer, UserDestroySerializer
+    UserUpdateSerializer, UserDestroySerializer, CompilationListSerializer, CompilationDetailSerializer, \
+    CompilationCreateSerializer, AdsDetailSerializer, CompilationDestroySerializer, CompilationUpdateSerializers, \
+    AdsDeDestroySerializer, AdsUpdateSerializer
+
+
+class LocAPIListPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 10
 
 
 class Index(View):
@@ -46,8 +59,6 @@ class AdsView(ListView):
             ad_list = ad_list.filter(price__range=(int(price_from), int(price_to)))
 
 
-        #price_from = 100 & price_to = 1000
-
         list_data = []
         for dt in ad_list:
             list_data.append({
@@ -64,39 +75,24 @@ class AdsView(ListView):
         return JsonResponse(list_data, safe=False)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
-class AdsDetailView(DetailView):
-    model = Ads
-
-    def get(self, request, *args, **kwargs):
-        try:
-            ad = self.get_object()
-            return JsonResponse({
-                'Id': ad.id,
-                'name': ad.name,
-                'author_id': ad.author.id,
-                'author': ad.author.first_name,
-                'price': ad.price,
-                'description': ad.description,
-                'is_published': ad.is_published,
-                'logo': ad.logo.url,
-                'category': ad.category.name
-                })
-        except:
-            return JsonResponse({'error': 'not found'}, status=404)
+class AdsDetailView(RetrieveAPIView):
+    queryset = Ads.objects.all()
+    serializer_class = AdsDetailSerializer
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
 
 
 @method_decorator(csrf_exempt, name='dispatch')
 class AdsCreateView(CreateView):
     model = Ads
-    fields = ['name', 'author', 'price', 'description',  'is_published']
+    fields = ['name', 'author', 'price', 'description', 'is_published']
 
     def post(self, request, *args, **kwargs):
         data = json.loads(request.body)
         try:
             category = Category.objects.get(pk=data['category_id'])
         except  Category.DoesNotExist as error:
-            return JsonResponse({"ERROR":f"{error}"})
+            return JsonResponse({"ERROR": f"{error}"})
         try:
             author = Users.objects.get(first_name=data['author'])
         except  Category.DoesNotExist as error:
@@ -114,41 +110,19 @@ class AdsCreateView(CreateView):
 
         return JsonResponse({'res': 'ok'}, status=200)
 
-@method_decorator(csrf_exempt, name='dispatch')
-class AdsUpdateView(UpdateView):
-    model = Ads
-    fields = ['name', 'price', 'description',  'is_published']
-    def patch(self, request, *args, **kwargs):
-        super().post(request, *args, **kwargs)
-        data = json.loads(request.body)
-        self.object.name = data['name']
-        self.object.author_id = data['author_id']
-        self.object.price = data['price']
-        self.object.description = data['description']
-        self.object.is_published = data['is_published']
-        self.object.logo = data['logo']
-        self.object.category_id = data['category_id']
 
-        self.object.save()
+class AdsUpdateView(UpdateAPIView):
+    queryset = Ads.objects.all()
+    serializer_class = AdsUpdateSerializer
+    permission_classes = [IsAuthenticated, PermissionsForAds]
+    authentication_classes = [JWTAuthentication]
 
-        return JsonResponse({
-            'name': self.object.name,
-            'author_id': self.object.author_id,
-            'price': self.object.price,
-            'description': self.object.description,
-            'is_published': self.object.is_published,
-            'logo': self.object.logo.url,
-            'category': self.object.category_id
-            }, status=200)
 
-@method_decorator(csrf_exempt, name='dispatch')
-class AdsDeleteView(DeleteView):
-    model = Ads
-    success_url = 'ad'
-
-    def delete(self, request, *args, **kwargs):
-        super().delete(request, *args, **kwargs)
-        return JsonResponse({'status':'ok'}, status=200)
+class AdsDeleteView(DestroyAPIView):
+    queryset = Ads.objects.all()
+    serializer_class = AdsDeDestroySerializer
+    permission_classes = [IsAuthenticated, PermissionsForAds]
+    authentication_classes = [JWTAuthentication]
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -168,7 +142,7 @@ class AdsAddImage(UpdateView):
             'is_published': self.object.is_published,
             'logo': self.object.logo.url if self.object.logo else None,
             'category': self.object.category.name
-            })
+        })
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -215,11 +189,11 @@ class CategoryCreateView(CreateView):
         return JsonResponse({'res': 'ok'}, status=200)
 
 
-
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryUpdateView(UpdateView):
     model = Category
     fields = ['name']
+
     def patch(self, request, *args, **kwargs):
         super().post(request, *args, **kwargs)
         data = json.loads(request.body)
@@ -229,7 +203,7 @@ class CategoryUpdateView(UpdateView):
         return JsonResponse({
             'id': self.object.id,
             'name': self.object.name,
-            }, status=200)
+        }, status=200)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -267,13 +241,46 @@ class UsersDeleteView(DestroyAPIView):
     serializer_class = UserDestroySerializer
 
 
-class LocAPIListPagination(PageNumberPagination):
-    page_size = 10
-    page_size_query_param = 'page_size'
-    max_page_size = 10
+class CompilationView(ListAPIView):
+    queryset = Compilation.objects.all()
+    serializer_class = CompilationListSerializer
+    pagination_class = LocAPIListPagination
+    authentication_classes = [JWTAuthentication]
+
+
+class CompilationDetailView(RetrieveAPIView):
+    queryset = Compilation.objects.all()
+    serializer_class = CompilationDetailSerializer
+
+
+class CompilationCreateView(CreateAPIView):
+    queryset = Compilation.objects.all()
+    serializer_class = CompilationCreateSerializer
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+
+class CompilationUpdateView(UpdateAPIView):
+    queryset = Compilation.objects.all()
+    serializer_class = CompilationUpdateSerializers
+    permission_classes = [IsAuthenticated, PermissionsForCompilation]
+    authentication_classes = [JWTAuthentication]
+
+
+class CompilationDeleteView(DestroyAPIView):
+    queryset = Compilation.objects.all()
+    serializer_class = CompilationDestroySerializer
+    permission_classes = [IsAuthenticated, PermissionsForCompilation]
+    authentication_classes = [JWTAuthentication]
 
 
 class LocationViewSet(ModelViewSet):
     queryset = Locations.objects.all()
     serializer_class = LocationSerializer
     pagination_class = LocAPIListPagination
+
+
+class Logout(APIView):
+    def get(self, request, format=None):
+        request.user.auth_token.delete()
+        return Response(status=status.HTTP_200_OK)
