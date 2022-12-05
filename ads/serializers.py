@@ -122,7 +122,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         )
         user.set_password(validated_data["password"])
         user.save()
-                for location in self._locations:
+        for location in self._locations:
             user_loc, _ = Locations.objects.get_or_create(name=location)
             user.location.add(user_loc)
         user.save()
