@@ -92,6 +92,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
+    birth_date = serializers.DateField(validators=[BirthDateValidator([9])])
     location = serializers.SlugRelatedField(
         required=False,
         many=True,
@@ -104,27 +105,17 @@ class UserCreateSerializer(serializers.ModelSerializer):
         exclude = ['id']
 
     def is_valid(self, *, raise_exception=False):
-        qd = self.initial_data.copy()
-        self._locations = qd.pop('location')
-        self.initial_data = qd
-        valid_result = super().is_valid(raise_exception=raise_exception)
-        qd.update({'location': self._locations})
-        self.initial_data = qd
-        return valid_result
+        self._locations = self.initial_data.pop('location')
+
+        return super().is_valid(raise_exception=True)
 
     def create(self, validated_data):
-        user = Users(
-            first_name=validated_data['first_name'],
-            last_name=validated_data['last_name'],
-            username=validated_data['username'],
-            role=validated_data['role'],
-            age=validated_data['age']
-        )
-        user.set_password(validated_data["password"])
-        user.save()
+        user = super().create(validated_data)
         for location in self._locations:
             user_loc, _ = Locations.objects.get_or_create(name=location)
             user.location.add(user_loc)
+        user.save()
+        user.set_password(validated_data["password"])
         user.save()
         return user
 
