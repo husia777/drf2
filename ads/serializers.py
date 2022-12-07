@@ -92,7 +92,6 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
-    birth_date = serializers.DateField(validators=[BirthDateValidator([9])])
     location = serializers.SlugRelatedField(
         required=False,
         many=True,
